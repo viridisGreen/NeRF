@@ -7,10 +7,13 @@ def run_dataset():
     from lib.datasets import make_data_loader
     import tqdm
 
+    #* cfg.train.batch_size = cfg.test.batch_size = 1
     cfg.train.num_workers = 0
     # ipdb.set_trace()
     data_loader = make_data_loader(cfg, is_train=False)
+    # ipdb.set_trace()
     for batch in tqdm.tqdm(data_loader):
+        # ipdb.set_trace()
         pass
 
 def run_network():

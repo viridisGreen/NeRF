@@ -36,7 +36,7 @@ def make_dataset(cfg, is_train=True):
         args = cfg.test_dataset
         module = cfg.test_dataset_module
         path = cfg.test_dataset_path
-    # ipdb.set_trace()
+
     #* 将某个模块的代码载入到当前的运行环境中，使得该模块中定义的函数、类和变量可以在当前环境下使用
     dataset = imp.load_source(module, path).Dataset #* 返回的是一个Dataset类，讲Dataset类导入到当前模块
     dataset = dataset(**args) #* 用类创建了实例，并返回
