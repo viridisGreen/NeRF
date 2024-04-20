@@ -25,19 +25,20 @@ def run_network():
     import torch
     import time
 
-    network = make_network(cfg).cuda()
+    network = make_network(cfg)
+    # network = make_network(cfg).cuda()
     load_network(network, cfg.trained_model_dir, epoch=cfg.test.epoch)
     network.eval()
 
     data_loader = make_data_loader(cfg, is_train=False)
     total_time = 0
     for batch in tqdm.tqdm(data_loader):
-        batch = to_cuda(batch)
+        # batch = to_cuda(batch)
         with torch.no_grad():
-            torch.cuda.synchronize()
+            # torch.cuda.synchronize()
             start = time.time()
             network(batch)
-            torch.cuda.synchronize()
+            # torch.cuda.synchronize()
             total_time += time.time() - start
     print(total_time / len(data_loader))
 
@@ -51,7 +52,8 @@ def run_evaluate():
     from lib.utils import net_utils
     import time
 
-    network = make_network(cfg).cuda()
+    # network = make_network(cfg).cuda()
+    network = make_network(cfg)
     net_utils.load_network(network,
                            cfg.trained_model_dir,
                            resume=cfg.resume,
@@ -62,14 +64,14 @@ def run_evaluate():
     evaluator = make_evaluator(cfg)
     net_time = []
     for batch in tqdm.tqdm(data_loader):
-        for k in batch:
-            if k != 'meta':
-                batch[k] = batch[k].cuda()
+        # for k in batch:
+        #     if k != 'meta':
+        #         batch[k] = batch[k].cuda()
         with torch.no_grad():
-            torch.cuda.synchronize()
+            # torch.cuda.synchronize()
             start_time = time.time()
             output = network(batch)
-            torch.cuda.synchronize()
+            # torch.cuda.synchronize()
             end_time = time.time()
         net_time.append(end_time - start_time)
         evaluator.evaluate(output, batch)

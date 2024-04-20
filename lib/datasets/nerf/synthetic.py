@@ -78,6 +78,7 @@ class Dataset(data.Dataset):
                 [0, focal, 0.5*H],
                 [0, 0, 1]
             ])  
+        self.K = K
         # ipdb.set_trace()
         # Prepare raybatch tensor if batching random rays
         N_rand = cfg.task_arg.N_rays #* 一批采样几条光线
@@ -110,7 +111,11 @@ class Dataset(data.Dataset):
             ids = np.random.choice(N_item, self.N_rays, replace=True) 
             rays_rgb = self.rays_rgb[ids]
         # ipdb.set_trace()
-        return rays_rgb
+        
+        ret = {'rays_rgb': rays_rgb}
+        ret.update({'meta': {'H': self.hwf[0], 'W': self.hwf[1], 
+                             'focal': self.hwf[2], 'K': self.K}}) # meta means no need to send to cuda
+        return ret
     
 
     def __len__(self):

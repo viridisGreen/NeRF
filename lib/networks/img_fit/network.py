@@ -6,7 +6,7 @@ from lib.networks.encoding import get_encoder
 from lib.config import cfg
 import ipdb
 
-'''输入是一个batch的uv坐标，输出是一个batch的rgb值'''
+'''输入是一个batch的uv坐标, 输出是一个batch的rgb值'''
 class Network(nn.Module):
     def __init__(self,):
         super(Network, self).__init__()
