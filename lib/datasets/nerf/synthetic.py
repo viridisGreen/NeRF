@@ -91,25 +91,27 @@ class Dataset(data.Dataset):
         rays_rgb = np.transpose(rays_rgb, [0,2,3,1,4]) # [N, H, W, ro+rd+rgb, 3]
         rays_rgb = np.reshape(rays_rgb, [-1,3,3]) # [N*H*W, ro+rd+rgb, 3]
         rays_rgb = rays_rgb.astype(np.float32)
-        # print('shuffle rays')
-        # np.random.shuffle(rays_rgb) #* 考虑到后面随机抽取，这里不用也不能shuffle了
-        # print('done') 
+        print('shuffle rays')
+        np.random.shuffle(rays_rgb) #* 考虑到后面随机抽取，这里不用也不能shuffle了
+        print('done') 
         # ipdb.set_trace()
         self.rays_rgb = rays_rgb   
         
     
-    def __getitem__(self, index):   
+    def __getitem__(self, index): 
         N = len(self.rays_rgb) #* rays总数
         H, W, _ = self.hwf
         N_item = int(N / H / W) #* 一张图片能产生的rays数量
         # ipdb.set_trace()
         if self.split == "train":
-            ids = np.random.choice(N_item, self.N_rays, replace=True) 
-            ids = ids + index * N_item
-            rays_rgb = self.rays_rgb[ids]
+            # ids = np.random.choice(N, self.N_rays, replace=False) 
+            # ids = ids + index * N_item
+            # rays_rgb = self.rays_rgb[ids]
+            rays_rgb = self.rays_rgb[index*self.N_rays: (index+1)*self.N_rays]
         else:
-            ids = np.random.choice(N_item, self.N_rays, replace=True) 
-            rays_rgb = self.rays_rgb[ids]
+            # ids = np.random.choice(N_item, self.N_rays, replace=True) 
+            # rays_rgb = self.rays_rgb[ids]
+            rays_rgb = self.rays_rgb
         # ipdb.set_trace()
         
         ret = {'rays_rgb': rays_rgb}
@@ -119,13 +121,13 @@ class Dataset(data.Dataset):
     
 
     def __len__(self):
-        # N = self.rays_rgb.shape[0]
-        # # ipdb.set_trace()
-        # if self.split == "train":
-        #     return int(N / self.N_rays / cfg.train.batch_size)
-        # else:
-        #     return int(N / self.N_rays / cfg.test.batch_size)
-        return 3
+        N = self.rays_rgb.shape[0]
+        # ipdb.set_trace()
+        if self.split == "train":
+            return int(N / self.N_rays / cfg.train.batch_size)
+        else:
+            return int(N / self.N_rays / cfg.train.batch_size)
+        # return 3
 
 
 

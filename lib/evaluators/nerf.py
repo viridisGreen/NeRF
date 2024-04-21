@@ -23,26 +23,13 @@ class Evaluator:
         os.system('mkdir -p ' + cfg.result_dir + '/vis') #* 存储可视化输出
 
     def evaluate(self, output, batch):
-        # assert image number = 1
-        H, W = batch['meta']['H'].item(), batch['meta']['W'].item() #* 从batch['meta']中提取原始图像的高度和宽度（H和W）
-        #* 将预测rgb和真实rgb从张量转为np数组，并调整形状
-        # ipdb.set_trace()
-        pred_rgb = output[0][0].detach().cpu().numpy()
-        
-        batch = batch['rays_rgb']
-        batch = batch.reshape(-1, 3, 3)
-        batch = torch.transpose(batch, 0, 1)
-        batch_rays, target_s = batch[:2], batch[2]
-        
-        gt_rgb = target_s[0].detach().cpu().numpy()
-        #* 用skimage.metrics中的psnr函数计算预测图像相对于真实图像的PSNR值，并append到self.psnrs中
-        psnr_item = psnr(gt_rgb, pred_rgb, data_range=1.)
-        self.psnrs.append(psnr_item)
+        render_poses = torch.stack([pose_spherical(angle, -30.0, 4.0) for angle in np.linspace(-180,180,40+1)[:-1]], 0)
+        hwf = [batch['meta']['H'].item(), batch['meta']['W'].item(), batch['meta']['focal']]
+        K = batch['meta']['K']
+        chunk = cfg.task_arg.chunk_size
         save_path = os.path.join(cfg.result_dir, 'vis/res.jpg')
-        # imageio.imwrite(save_path, img_utils.horizon_concate(gt_rgb, pred_rgb))
-        # image_float64 = img_utils.horizon_concate(gt_rgb, pred_rgb) * 255.0 #* 真实|预测，拼接
-        # image_int8 = image_float64.astype(np.uint8) #* 类型转换，float[0, 1] -> int[0, 255]
-        # imageio.imwrite(save_path, image_int8) #* 存储到指定path
+        
+        self.render_path(render_poses, hwf, K, chunk, savedir=save_path)
 
     def summarize(self):
         '''汇总评估过程中收集的所有PSNR值, 并打印和保存评估结果'''
@@ -54,3 +41,74 @@ class Evaluator:
         #* 将评估结果（存储在字典ret中）以JSON格式写入到一个文件中
         json.dump(ret, open(os.path.join(cfg.result_dir, 'metrics.json'), 'w')) 
         return ret
+
+    def render_path(self, render_poses, hwf, K, chunk, render_kwargs=None, gt_imgs=None, savedir=None, render_factor=0):
+
+        H, W, focal = hwf
+
+        if render_factor!=0:
+            # Render downsampled for speed
+            H = H//render_factor
+            W = W//render_factor
+            focal = focal/render_factor
+
+        rgbs = []
+        disps = []
+
+        t = time.time()
+        for i, c2w in enumerate(tqdm(render_poses)):
+            print(i, time.time() - t)
+            t = time.time()
+            # rgb, disp, acc, _ = render(H, W, K, chunk=chunk, c2w=c2w[:3,:4], **render_kwargs)
+            rgb, disp, acc = output[0], output[1], output[2]
+            rgbs.append(rgb.cpu().numpy())
+            disps.append(disp.cpu().numpy())
+            if i==0:
+                print(rgb.shape, disp.shape)
+
+            """
+            if gt_imgs is not None and render_factor==0:
+                p = -10. * np.log10(np.mean(np.square(rgb.cpu().numpy() - gt_imgs[i])))
+                print(p)
+            """
+            
+            to8b = lambda x : (255*np.clip(x,0,1)).astype(np.uint8)
+
+            if savedir is not None:
+                rgb8 = to8b(rgbs[-1])
+                # filename = os.path.join(savedir, '{:03d}.png'.format(i))
+                imageio.imwrite(savedir, rgb8)
+
+
+        rgbs = np.stack(rgbs, 0)
+        disps = np.stack(disps, 0)
+
+        return rgbs, disps
+    
+#=================================================================================================#
+
+trans_t = lambda t : torch.Tensor([
+    [1,0,0,0],
+    [0,1,0,0],
+    [0,0,1,t],
+    [0,0,0,1]]).float()
+
+rot_phi = lambda phi : torch.Tensor([
+    [1,0,0,0],
+    [0,np.cos(phi),-np.sin(phi),0],
+    [0,np.sin(phi), np.cos(phi),0],
+    [0,0,0,1]]).float()
+
+rot_theta = lambda th : torch.Tensor([
+    [np.cos(th),0,-np.sin(th),0],
+    [0,1,0,0],
+    [np.sin(th),0, np.cos(th),0],
+    [0,0,0,1]]).float()
+
+
+def pose_spherical(theta, phi, radius):
+    c2w = trans_t(radius)
+    c2w = rot_phi(phi/180.*np.pi) @ c2w
+    c2w = rot_theta(theta/180.*np.pi) @ c2w
+    c2w = torch.Tensor(np.array([[-1,0,0,0],[0,0,1,0],[0,1,0,0],[0,0,0,1]])) @ c2w
+    return c2w

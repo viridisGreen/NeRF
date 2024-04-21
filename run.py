@@ -51,7 +51,7 @@ def run_evaluate():
     from lib.networks import make_network
     from lib.utils import net_utils
     import time
-
+    
     # network = make_network(cfg).cuda()
     network = make_network(cfg)
     net_utils.load_network(network,
@@ -74,7 +74,7 @@ def run_evaluate():
             # torch.cuda.synchronize()
             end_time = time.time()
         net_time.append(end_time - start_time)
-        evaluator.evaluate(output, batch)
+        # evaluator.evaluate(output, batch)
     evaluator.summarize()
     if len(net_time) > 1:
         print('net_time: ', np.mean(net_time[1:]))
